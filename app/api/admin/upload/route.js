@@ -16,8 +16,8 @@ export async function POST(request) {
     if (!(file instanceof File)) {
       return NextResponse.json({ error: "اختر صورة أولاً" }, { status: 400 });
     }
-    if (file.size > 5 * 1024 * 1024) {
-      return NextResponse.json({ error: "حجم الصورة يجب ألا يتجاوز 5 ميغابايت" }, { status: 413 });
+    if (file.size > 4 * 1024 * 1024) {
+      return NextResponse.json({ error: "حجم الصورة يجب ألا يتجاوز 4 ميغابايت" }, { status: 413 });
     }
 
     const outgoing = new FormData();
