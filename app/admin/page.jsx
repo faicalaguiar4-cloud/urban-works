@@ -213,8 +213,8 @@ export default function AdminPage() {
       <footer>© {new Date().getFullYear()} URBAN WORKS</footer>
       <style jsx>{`
         *{box-sizing:border-box}
-        .admin-shell{--a:#ed542b;--ink:#111214;--panel:#1b1c1e;--panel2:#222427;--line:#36383b;--muted:#a3a5a8;min-height:100vh;background:radial-gradient(ellipse at 85% 0%,#ed542b18,transparent 32%),linear-gradient(135deg,#111214,#191a1c 60%,#111214);color:#f7f7f5;padding:25px clamp(16px,5vw,76px);display:flex;flex-direction:column;font-family:inherit;position:relative;isolation:isolate}
-        .admin-shell:before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:linear-gradient(#ffffff08 1px,transparent 1px),linear-gradient(90deg,#ffffff08 1px,transparent 1px);background-size:48px 48px;mask-image:linear-gradient(135deg,#000,transparent 75%)}
+        .admin-shell{--a:#ed542b;--ink:#111214;--panel:#1b1c1e;--panel2:#222427;--line:#36383b;--muted:#a3a5a8;min-height:100vh;background:radial-gradient(ellipse at 85% 0%,#ed542b18,transparent 32%),linear-gradient(135deg,#0b0c0e,#191a1c 60%,#101113);color:#f7f7f5;padding:25px clamp(16px,5vw,76px);display:flex;flex-direction:column;font-family:inherit;position:relative;isolation:isolate;overflow:hidden}
+        .admin-shell:before{content:"";position:fixed;inset:-12%;z-index:-1;pointer-events:none;background-image:linear-gradient(#ffffff0a 1px,transparent 1px),linear-gradient(90deg,#ffffff0a 1px,transparent 1px),linear-gradient(30deg,transparent 49.8%,#ed542b18 50%,transparent 50.2%),linear-gradient(150deg,transparent 49.8%,#ffffff0c 50%,transparent 50.2%);background-size:48px 48px,48px 48px,280px 240px,340px 300px;mask-image:linear-gradient(135deg,#000,transparent 82%);animation:uwBlueprintDrift 48s linear infinite}
         .topbar{display:flex;justify-content:space-between;align-items:center;color:#d2d2d0;font-size:13px;padding:8px 0 22px;border-bottom:1px solid #ffffff18}
         .brand{font:800 20px Manrope,sans-serif;letter-spacing:-1px;color:#fff;display:flex;align-items:center;gap:12px}
         .brand:before{content:"UW";display:grid;place-items:center;width:42px;height:42px;clip-path:polygon(50% 0,96% 25%,96% 75%,50% 100%,4% 75%,4% 25%);background:var(--a);color:white;font:900 13px Manrope,sans-serif;letter-spacing:-2px}
@@ -263,6 +263,13 @@ export default function AdminPage() {
         .error{color:#ffaaa0;background:#7e261d30;border:1px solid #a94d43;padding:11px 14px;font-size:13px;margin:12px 0}
         .admin-shell footer{text-align:center;color:#77797b;font:600 9px Manrope,sans-serif;letter-spacing:1.5px;margin-top:auto;padding:30px 0 8px;border-top:1px solid #ffffff15}
         @media(max-width:650px){.image-uploader{grid-template-columns:1fr}.admin-shell{padding:17px 13px}.dashboard{margin-top:25px}.workspace{padding:15px}.welcome{align-items:flex-start;flex-direction:column;padding:23px 19px}.welcome h1{font-size:29px}.form-grid{grid-template-columns:1fr}.wide{grid-column:auto}.record{align-items:flex-start;flex-wrap:wrap;padding:15px 7px}.record-main{flex-basis:calc(100% - 105px)}.record-actions{width:100%}.record-actions button{flex:1}.section-title{align-items:flex-start}.login-card{padding:28px 22px}.tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.tabs button{padding:11px 7px;font-size:11px}.section-title h2{font-size:20px}}
+
+        .admin-shell:after{content:"";position:fixed;z-index:-1;pointer-events:none;width:58vw;height:58vw;min-width:440px;min-height:440px;right:-18vw;top:8vh;border:1px solid #ed542b22;border-radius:50%;box-shadow:0 0 0 42px #ed542b08,0 0 0 86px #ffffff06,0 0 0 130px #ed542b05,inset 0 0 100px #ed542b0a;background:radial-gradient(circle at 35% 40%,#ed542b12,transparent 58%);animation:uwOrbitalFloat 24s ease-in-out infinite alternate}
+        .admin-shell .dashboard,.admin-shell .topbar,.admin-shell>footer{position:relative;z-index:1}
+        .admin-shell .workspace,.admin-shell .welcome,.admin-shell .login-card{backdrop-filter:blur(12px)}
+        @keyframes uwBlueprintDrift{0%{background-position:0 0,0 0,0 0,0 0}100%{background-position:48px 48px,-48px 48px,280px 240px,-340px 300px}}
+        @keyframes uwOrbitalFloat{0%{transform:translate3d(0,0,0) rotate(-8deg)}100%{transform:translate3d(-5vw,4vh,0) rotate(12deg)}}
+        @media(prefers-reduced-motion:reduce){.admin-shell:before,.admin-shell:after{animation:none!important;scroll-behavior:auto!important}}
       `}</style>
     </main>
   );
