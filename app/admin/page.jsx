@@ -57,7 +57,10 @@ export default function AdminPage() {
     try {
       const result = await api("/api/admin/data?table=" + table);
       if (table === "site_settings") setSettings(result.data || {});
-      else setData(prev => ({ ...prev, [table]: result.data || [] }));
+      else if (table === "service_categories") {
+        setCategories(result.data || []);
+        setData(prev => ({ ...prev, [table]: result.data || [] }));
+      } else setData(prev => ({ ...prev, [table]: result.data || [] }));
     } catch (e) { setError(e.message); }
   }
 
