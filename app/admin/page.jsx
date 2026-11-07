@@ -4,12 +4,14 @@ import { useEffect, useState } from "react";
 
 const tabs = [
   ["services", "الخدمات والأسعار"],
+  ["products", "المنتجات والصور"],
   ["print_options", "أسعار الطباعة"],
   ["orders", "الطلبات"],
   ["site_settings", "إعدادات الموقع"],
 ];
 const emptyService = { name: "", description: "", price: "", price_unit: "للوحدة", category_id: "", is_visible: true, is_available: true, display_order: 0 };
 const emptyPrint = { paper_size: "A4", paper_type: "Standard", color_mode: "bw", duplex: false, price_per_page: "0", is_visible: true };
+const emptyProduct = { name: "", description: "", sku: "", price: "", stock_quantity: 0, image_url: "", is_visible: true, is_available: true, display_order: 0 };
 
 export default function AdminPage() {
   const [code, setCode] = useState("");
@@ -24,6 +26,9 @@ export default function AdminPage() {
   const [editing, setEditing] = useState(null);
   const [printForm, setPrintForm] = useState(emptyPrint);
   const [printEditing, setPrintEditing] = useState(null);
+  const [productForm, setProductForm] = useState(emptyProduct);
+  const [productEditing, setProductEditing] = useState(null);
+  const [uploading, setUploading] = useState(false);
   const [settings, setSettings] = useState({});
   const [notice, setNotice] = useState("");
 
@@ -56,6 +61,20 @@ export default function AdminPage() {
     } catch (e) { setError(e.message); }
   }
 
+
+  async function uploadImage(file, onUploaded) {
+    if (!file) return;
+    setUploading(true); setError(""); setNotice("");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const result = await api("/api/admin/upload", { method: "POST", body: formData });
+      onUploaded(result.data.publicUrl);
+      setNotice("تم رفع الصورة بنجاح");
+    } catch (e) { setError(e.message); }
+    finally { setUploading(false); }
+  }
+
   async function login(event) {
     event.preventDefault(); setBusy(true); setError("");
     try {
@@ -77,6 +96,18 @@ export default function AdminPage() {
       if (editing) await api("/api/admin/data", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ table: "services", payload: { ...payload, id: editing } }) });
       else await api("/api/admin/data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ table: "services", payload }) });
       setForm(emptyService); setEditing(null); setNotice("تم حفظ الخدمة"); load("services");
+    } catch (e) { setError(e.message); }
+    finally { setBusy(false); }
+  }
+
+
+  async function saveProduct(event) {
+    event.preventDefault(); setBusy(true); setError("");
+    try {
+      const payload = { ...productForm, price: productForm.price === "" ? null : Number(productForm.price), stock_quantity: Number(productForm.stock_quantity || 0), display_order: Number(productForm.display_order || 0) };
+      if (productEditing) await api("/api/admin/data", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ table: "products", payload: { ...payload, id: productEditing } }) });
+      else await api("/api/admin/data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ table: "products", payload }) });
+      setProductForm(emptyProduct); setProductEditing(null); setNotice("تم حفظ المنتج"); load("products");
     } catch (e) { setError(e.message); }
     finally { setBusy(false); }
   }
@@ -118,6 +149,7 @@ export default function AdminPage() {
 
   const services = data.services || [];
   const prints = data.print_options || [];
+  const products = data.products || [];
   const orders = data.orders || [];
   const field = (label, key, type = "text") => <label className="field">{label}<input type={type} value={form[key] ?? ""} onChange={e => setForm({ ...form, [key]: e.target.value })} /></label>;
 
@@ -138,10 +170,25 @@ export default function AdminPage() {
               {field("وحدة السعر", "price_unit")}
               <label className="field">التصنيف<select value={form.category_id || ""} onChange={e => setForm({ ...form, category_id: e.target.value })}><option value="">بدون تصنيف</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
               <label className="field wide">الوصف<textarea value={form.description || ""} onChange={e => setForm({ ...form, description: e.target.value })} /></label>
+              <div className="wide image-uploader"><label className="field">صورة الخدمة (اختياري)<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" disabled={uploading} onChange={e => uploadImage(e.target.files?.[0], url => setForm(current => ({ ...current, image_url: url })))} /></label>{form.image_url && <img className="image-preview" src={form.image_url} alt="معاينة صورة الخدمة" />}{uploading && <small>جارٍ رفع الصورة…</small>}</div>
               <label className="check"><input type="checkbox" checked={Boolean(form.is_visible)} onChange={e => setForm({ ...form, is_visible: e.target.checked })}/> ظاهرة في الموقع</label>
               <label className="check"><input type="checkbox" checked={Boolean(form.is_available)} onChange={e => setForm({ ...form, is_available: e.target.checked })}/> متاحة للطلب</label>
             </div><div className="form-actions"><button disabled={busy}>{editing ? "حفظ التعديلات" : "إضافة الخدمة"}</button>{editing && <button type="button" className="ghost" onClick={() => { setEditing(null); setForm(emptyService); }}>إلغاء</button>}</div></form>
-            <div className="records">{services.map(s => <article className="record" key={s.id}><div className="record-main"><strong>{s.name}</strong><p>{s.description || "—"}</p><small>{s.price == null ? "السعر غير محدد" : Number(s.price).toLocaleString("fr-FR") + " دج"} · {s.is_visible ? "ظاهرة" : "مخفية"}</small></div><div className="record-actions"><button className="ghost" onClick={() => { setEditing(s.id); setForm({ ...s, price: s.price ?? "" }); window.scrollTo({ top: 0, behavior: "smooth" }); }}>تعديل</button><button className="danger" onClick={() => remove("services", s.id)}>حذف</button></div></article>)}</div>
+            <div className="records">{services.map(s => <article className="record" key={s.id}>{s.image_url && <img className="record-thumb" src={s.image_url} alt={s.name} />}<div className="record-main"><strong>{s.name}</strong><p>{s.description || "—"}</p><small>{s.price == null ? "السعر غير محدد" : Number(s.price).toLocaleString("fr-FR") + " دج"} · {s.is_visible ? "ظاهرة" : "مخفية"}</small></div><div className="record-actions"><button className="ghost" onClick={() => { setEditing(s.id); setForm({ ...s, price: s.price ?? "" }); window.scrollTo({ top: 0, behavior: "smooth" }); }}>تعديل</button><button className="danger" onClick={() => remove("services", s.id)}>حذف</button></div></article>)}</div>
+          </section>}
+          {tab === "products" && <section className="workspace">
+            <div className="section-title"><div><h2>المنتجات والصور</h2><p>أضف منتجاً جديداً مع صورته وسعره ومخزونه، أو عدّل منتجاً موجوداً.</p></div><span>{products.length} منتج</span></div>
+            <form className="editor" onSubmit={saveProduct}><h3>{productEditing ? "تعديل المنتج" : "إضافة منتج جديد"}</h3><div className="form-grid">
+              <label className="field">اسم المنتج<input required value={productForm.name} onChange={e => setProductForm({ ...productForm, name: e.target.value })} /></label>
+              <label className="field">السعر بالدينار<input type="number" min="0" value={productForm.price} onChange={e => setProductForm({ ...productForm, price: e.target.value })} /></label>
+              <label className="field">رمز المنتج / SKU<input value={productForm.sku} onChange={e => setProductForm({ ...productForm, sku: e.target.value })} /></label>
+              <label className="field">الكمية المتوفرة<input type="number" min="0" value={productForm.stock_quantity} onChange={e => setProductForm({ ...productForm, stock_quantity: e.target.value })} /></label>
+              <label className="field wide">الوصف<textarea value={productForm.description || ""} onChange={e => setProductForm({ ...productForm, description: e.target.value })} /></label>
+              <div className="wide image-uploader"><label className="field">صورة المنتج<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" disabled={uploading} onChange={e => uploadImage(e.target.files?.[0], url => setProductForm(current => ({ ...current, image_url: url })))} /></label>{productForm.image_url && <img className="image-preview" src={productForm.image_url} alt="معاينة صورة المنتج" />}{uploading && <small>جارٍ رفع الصورة…</small>}<small>JPG أو PNG أو WEBP أو GIF، بحد أقصى 5 ميغابايت.</small></div>
+              <label className="check"><input type="checkbox" checked={Boolean(productForm.is_visible)} onChange={e => setProductForm({ ...productForm, is_visible: e.target.checked })}/> ظاهر في الموقع</label>
+              <label className="check"><input type="checkbox" checked={Boolean(productForm.is_available)} onChange={e => setProductForm({ ...productForm, is_available: e.target.checked })}/> متاح للبيع</label>
+            </div><div className="form-actions"><button disabled={busy || uploading}>{productEditing ? "حفظ التعديلات" : "إضافة المنتج"}</button>{productEditing && <button type="button" className="ghost" onClick={() => { setProductEditing(null); setProductForm(emptyProduct); }}>إلغاء</button>}</div></form>
+            <div className="records">{products.map(p => <article className="record" key={p.id}>{p.image_url && <img className="record-thumb" src={p.image_url} alt={p.name} />}<div className="record-main"><strong>{p.name}</strong><p>{p.description || "—"}</p><small>{p.price == null ? "السعر غير محدد" : Number(p.price).toLocaleString("fr-FR") + " دج"} · المخزون: {p.stock_quantity} · {p.is_visible ? "ظاهر" : "مخفي"}</small></div><div className="record-actions"><button className="ghost" onClick={() => { setProductEditing(p.id); setProductForm({ ...p, price: p.price ?? "" }); window.scrollTo({ top: 0, behavior: "smooth" }); }}>تعديل</button><button className="danger" onClick={() => remove("products", p.id)}>حذف</button></div></article>)}</div>
           </section>}
           {tab === "print_options" && <section className="workspace"><div className="section-title"><div><h2>أسعار الطباعة</h2><p>حدد سعر الصفحة حسب الحجم ونوع الورق والألوان والوجهين.</p></div><span>{prints.length} خيار</span></div>
             <form className="editor" onSubmit={savePrint}><h3>{printEditing ? "تعديل خيار" : "إضافة سعر طباعة"}</h3><div className="form-grid">
@@ -162,8 +209,8 @@ export default function AdminPage() {
       )}
       <footer>© {new Date().getFullYear()} URBAN WORKS</footer>
       <style jsx>{`
-        *{box-sizing:border-box}.admin-shell{min-height:100vh;background:#202722;color:#f5f5ef;padding:26px 6vw;display:flex;flex-direction:column;font-family:inherit}.topbar{display:flex;justify-content:space-between;align-items:center;color:#cbd1c5;font-size:13px}.brand{font:800 20px Manrope,sans-serif;letter-spacing:-1px;color:#f5f5ef}.login-card{width:min(100%,440px);margin:auto;background:#f4f3ee;color:#202722;padding:40px;border:1px solid #d8ff62}.mark{width:48px;height:48px;display:grid;place-items:center;background:#d8ff62;font-weight:900;margin-bottom:25px}.eyebrow{font:700 10px Manrope,sans-serif;letter-spacing:1.6px;color:#91a079}.login-card h1,.welcome h1{font-size:30px;margin:12px 0}.muted{color:#9ba398;font-size:13px}.login-card .muted{color:#73786f;margin-bottom:25px}.field{display:flex;flex-direction:column;gap:8px;font-size:13px;color:#d8ded3}.login-card .field{color:#202722}.field input,.field select,.field textarea,.status{width:100%;padding:12px;border:1px solid #4b554a;background:#29332c;color:inherit;font:inherit;border-radius:0;min-width:0}.login-card .field input{background:#fff;color:#202722;border-color:#d1d4c9}.field textarea{min-height:80px;resize:vertical}.admin-shell button{border:0;background:#d8ff62;color:#202722;padding:12px 18px;font:700 13px inherit;cursor:pointer}.admin-shell button:disabled{opacity:.55;cursor:wait}.login-card button{width:100%;margin-top:18px}.dashboard{width:min(1100px,100%);margin:58px auto 35px}.welcome{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:28px}.welcome h1{font-size:34px}.out,.ghost{background:transparent!important;color:#dce3d7!important;border:1px solid #667061!important}.tabs{display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid #4a554a;padding-bottom:14px;margin-bottom:24px}.tabs button{background:transparent;color:#c4cbbf}.tabs button.active{background:#d8ff62;color:#202722}.workspace{background:#29332c;border:1px solid #465044;padding:25px}.section-title{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:22px}.section-title h2{margin:0 0 7px;font-size:23px}.section-title p,.record p{margin:0;color:#aab3a5;font-size:13px}.section-title span{color:#d8ff62;font-size:12px}.editor{background:#202722;padding:20px;margin-bottom:22px;border:1px solid #465044}.editor h3{margin:0 0 18px;font-size:16px}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}.wide{grid-column:1/-1}.check{display:flex;align-items:center;gap:8px;color:#dce3d7;font-size:13px}.check input{accent-color:#d8ff62}.form-actions{display:flex;gap:8px;margin-top:18px}.records{display:flex;flex-direction:column}.record{display:flex;justify-content:space-between;align-items:center;gap:15px;padding:16px 0;border-bottom:1px solid #465044}.record-main{min-width:0}.record-main strong{display:block;margin-bottom:6px}.record-main small{display:block;color:#d8ff62;font-size:11px;margin-top:7px}.record-actions{display:flex;gap:7px;flex-shrink:0}.record-actions button{padding:9px 12px}.danger{background:transparent!important;color:#ffaaa0!important;border:1px solid #80534d!important}.status{max-width:160px}.empty{text-align:center;color:#aab3a5;padding:35px}.notice{color:#d8ff62}.error{color:#ffaaa0;font-size:13px;margin:12px 0}.admin-shell footer{text-align:center;color:#879185;font-size:10px;margin-top:auto;padding-top:30px}
-        @media(max-width:650px){.admin-shell{padding:20px 16px}.dashboard{margin-top:35px}.workspace{padding:16px}.welcome{align-items:flex-start;flex-direction:column}.form-grid{grid-template-columns:1fr}.wide{grid-column:auto}.record{align-items:flex-start;flex-direction:column}.record-actions{width:100%}.record-actions button{flex:1}.section-title{align-items:flex-start}.login-card{padding:28px 22px}}
+        *{box-sizing:border-box}.admin-shell{min-height:100vh;background:#202722;color:#f5f5ef;padding:26px 6vw;display:flex;flex-direction:column;font-family:inherit}.topbar{display:flex;justify-content:space-between;align-items:center;color:#cbd1c5;font-size:13px}.brand{font:800 20px Manrope,sans-serif;letter-spacing:-1px;color:#f5f5ef}.login-card{width:min(100%,440px);margin:auto;background:#f4f3ee;color:#202722;padding:40px;border:1px solid #d8ff62}.mark{width:48px;height:48px;display:grid;place-items:center;background:#d8ff62;font-weight:900;margin-bottom:25px}.eyebrow{font:700 10px Manrope,sans-serif;letter-spacing:1.6px;color:#91a079}.login-card h1,.welcome h1{font-size:30px;margin:12px 0}.muted{color:#9ba398;font-size:13px}.login-card .muted{color:#73786f;margin-bottom:25px}.field{display:flex;flex-direction:column;gap:8px;font-size:13px;color:#d8ded3}.login-card .field{color:#202722}.field input,.field select,.field textarea,.status{width:100%;padding:12px;border:1px solid #4b554a;background:#29332c;color:inherit;font:inherit;border-radius:0;min-width:0}.login-card .field input{background:#fff;color:#202722;border-color:#d1d4c9}.field textarea{min-height:80px;resize:vertical}.admin-shell button{border:0;background:#d8ff62;color:#202722;padding:12px 18px;font:700 13px inherit;cursor:pointer}.admin-shell button:disabled{opacity:.55;cursor:wait}.login-card button{width:100%;margin-top:18px}.dashboard{width:min(1100px,100%);margin:58px auto 35px}.welcome{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:28px}.welcome h1{font-size:34px}.out,.ghost{background:transparent!important;color:#dce3d7!important;border:1px solid #667061!important}.tabs{display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid #4a554a;padding-bottom:14px;margin-bottom:24px}.tabs button{background:transparent;color:#c4cbbf}.tabs button.active{background:#d8ff62;color:#202722}.workspace{background:#29332c;border:1px solid #465044;padding:25px}.section-title{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:22px}.section-title h2{margin:0 0 7px;font-size:23px}.section-title p,.record p{margin:0;color:#aab3a5;font-size:13px}.section-title span{color:#d8ff62;font-size:12px}.editor{background:#202722;padding:20px;margin-bottom:22px;border:1px solid #465044}.editor h3{margin:0 0 18px;font-size:16px}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}.wide{grid-column:1/-1}.check{display:flex;align-items:center;gap:8px;color:#dce3d7;font-size:13px}.check input{accent-color:#d8ff62}.form-actions{display:flex;gap:8px;margin-top:18px}.records{display:flex;flex-direction:column}.record{display:flex;justify-content:space-between;align-items:center;gap:15px;padding:16px 0;border-bottom:1px solid #465044}.image-uploader{display:grid;grid-template-columns:minmax(0,1fr) 120px;gap:12px;align-items:center}.image-uploader input[type=file]{padding:9px;background:#29332c}.image-uploader small{grid-column:1/-1;color:#aab3a5}.image-preview,.record-thumb{width:112px;height:84px;object-fit:cover;border:1px solid #667061}.record-thumb{flex:0 0 86px;width:86px;height:72px}.record-main{flex:1}.record-main{min-width:0}.record-main strong{display:block;margin-bottom:6px}.record-main small{display:block;color:#d8ff62;font-size:11px;margin-top:7px}.record-actions{display:flex;gap:7px;flex-shrink:0}.record-actions button{padding:9px 12px}.danger{background:transparent!important;color:#ffaaa0!important;border:1px solid #80534d!important}.status{max-width:160px}.empty{text-align:center;color:#aab3a5;padding:35px}.notice{color:#d8ff62}.error{color:#ffaaa0;font-size:13px;margin:12px 0}.admin-shell footer{text-align:center;color:#879185;font-size:10px;margin-top:auto;padding-top:30px}
+        @media(max-width:650px){.image-uploader{grid-template-columns:1fr}.admin-shell{padding:20px 16px}.dashboard{margin-top:35px}.workspace{padding:16px}.welcome{align-items:flex-start;flex-direction:column}.form-grid{grid-template-columns:1fr}.wide{grid-column:auto}.record{align-items:flex-start;flex-direction:column}.record-actions{width:100%}.record-actions button{flex:1}.section-title{align-items:flex-start}.login-card{padding:28px 22px}}
       `}</style>
     </main>
   );
