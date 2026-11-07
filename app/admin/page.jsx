@@ -8,9 +8,12 @@ const tabs = [
   ["print_options", "أسعار الطباعة"],
   ["orders", "الطلبات"],
   ["site_settings", "إعدادات الموقع"],
+  ["sharing", "مشاركة صفحة العملاء"],
 ];
 const emptyService = { name: "", description: "", price: "", price_unit: "للوحدة", category_id: "", is_visible: true, is_available: true, display_order: 0 };
 const emptyPrint = { paper_size: "A4", paper_type: "Standard", color_mode: "bw", duplex: false, price_per_page: "0", is_visible: true };
+const CUSTOMER_PAGE_URL = "https://urban-works-faicalaguiar4-1198.vercel.app/products";
+const QR_IMAGE_URL = "https://api.qrserver.com/v1/create-qr-code/?size=640x640&margin=18&color=111214&bgcolor=FFFFFF&data=" + encodeURIComponent(CUSTOMER_PAGE_URL);
 const emptyProduct = { name: "", description: "", sku: "", price: "", stock_quantity: 0, image_url: "", is_visible: true, is_available: true, display_order: 0 };
 
 export default function AdminPage() {
@@ -205,6 +208,17 @@ export default function AdminPage() {
             <div className="records">{prints.map(p => <article className="record" key={p.id}><div className="record-main"><strong>{p.paper_size} · {p.paper_type}</strong><p>{p.color_mode === "color" ? "ملون" : "أبيض وأسود"} · {p.duplex ? "وجهين" : "وجه واحد"}</p><small>{Number(p.price_per_page).toLocaleString("fr-FR")} دج للصفحة · {p.is_visible ? "ظاهر" : "مخفي"}</small></div><div className="record-actions"><button className="ghost" onClick={() => { setPrintEditing(p.id); setPrintForm({ ...p, price_per_page: String(p.price_per_page) }); }}>تعديل</button><button className="danger" onClick={() => remove("print_options", p.id)}>حذف</button></div></article>)}</div>
           </section>}
           {tab === "orders" && <section className="workspace"><div className="section-title"><div><h2>طلبات العملاء</h2><p>تابع الطلبات وغيّر حالتها.</p></div><span>{orders.length} طلب</span></div><div className="records">{orders.length ? orders.map(o => <article className="record" key={o.id}><div className="record-main"><strong>{o.customer_name} · {o.phone}</strong><p>{o.details}</p><small>{o.order_type} · {new Date(o.created_at).toLocaleString("ar-DZ")}</small></div><select className="status" value={o.status} onChange={e => updateOrder(o.id, e.target.value)}><option value="pending">قيد الانتظار</option><option value="in_progress">قيد التنفيذ</option><option value="completed">مكتمل</option><option value="cancelled">ملغى</option></select></article>) : <p className="empty">لا توجد طلبات حالياً.</p>}</div></section>}
+          {tab === "sharing" && <section className="workspace">
+            <div className="section-title"><div><h2>مشاركة صفحة العملاء</h2><p>شارك كتالوج الخدمات والمنتجات مع زبائنك مباشرة.</p></div><span>رابط + QR</span></div>
+            <div className="share-panel">
+              <div className="share-copy"><p className="eyebrow">CUSTOMER CATALOG / PUBLIC LINK</p><h3>رابط صفحة العملاء</h3><p>أرسل هذا الرابط في منشور Facebook أو WhatsApp أو ضعه في السيرة الذاتية لصفحتك.</p>
+                <div className="share-url" dir="ltr">{CUSTOMER_PAGE_URL}</div>
+                <div className="form-actions"><button type="button" onClick={async()=>{try{await navigator.clipboard.writeText(CUSTOMER_PAGE_URL);setNotice("تم نسخ رابط صفحة العملاء");}catch{setNotice("انسخ الرابط يدوياً من الحقل أعلاه");}}}>نسخ الرابط</button><button type="button" className="ghost" onClick={()=>window.open(CUSTOMER_PAGE_URL,"_blank","noopener,noreferrer")}>فتح صفحة العملاء ↗</button></div>
+                <button type="button" className="ghost" onClick={()=>{const text="تفضلوا بزيارة كتالوج URBAN WORKS للاطلاع على خدماتنا ومنتجاتنا وطلب ما تحتاجونه: "+CUSTOMER_PAGE_URL; if(navigator.share) navigator.share({title:"URBAN WORKS",text,url:CUSTOMER_PAGE_URL}).catch(()=>{}); else {navigator.clipboard?.writeText(text);setNotice("تم تجهيز نص المشاركة ونسخه");}}}>مشاركة الرابط</button>
+              </div>
+              <div className="share-qr"><img src={QR_IMAGE_URL} alt="رمز QR لصفحة العملاء" /><strong>امسح الرمز لفتح صفحة العملاء</strong><a href={QR_IMAGE_URL} target="_blank" rel="noreferrer">فتح صورة QR للطباعة أو الحفظ ↗</a></div>
+            </div>
+          </section>}
           {tab === "site_settings" && <section className="workspace"><div className="section-title"><div><h2>إعدادات الموقع</h2><p>عدّل معلومات التواصل واسم النشاط التجاري.</p></div></div><form className="editor" onSubmit={saveSettings}><div className="form-grid">
             {["business_name","public_page_title","whatsapp_number","phone_number","address"].map((key) => <label className="field" key={key}>{({business_name:"اسم المحل",public_page_title:"عنوان الصفحة",whatsapp_number:"رقم واتساب",phone_number:"رقم الهاتف",address:"العنوان"})[key]}<input value={settings[key] || ""} onChange={e => setSettings({ ...settings, [key]: e.target.value })}/></label>)}
           </div><button disabled={busy}>حفظ الإعدادات</button></form></section>}
@@ -264,6 +278,12 @@ export default function AdminPage() {
         .admin-shell footer{text-align:center;color:#77797b;font:600 9px Manrope,sans-serif;letter-spacing:1.5px;margin-top:auto;padding:30px 0 8px;border-top:1px solid #ffffff15}
         @media(max-width:650px){.image-uploader{grid-template-columns:1fr}.admin-shell{padding:17px 13px}.dashboard{margin-top:25px}.workspace{padding:15px}.welcome{align-items:flex-start;flex-direction:column;padding:23px 19px}.welcome h1{font-size:29px}.form-grid{grid-template-columns:1fr}.wide{grid-column:auto}.record{align-items:flex-start;flex-wrap:wrap;padding:15px 7px}.record-main{flex-basis:calc(100% - 105px)}.record-actions{width:100%}.record-actions button{flex:1}.section-title{align-items:flex-start}.login-card{padding:28px 22px}.tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.tabs button{padding:11px 7px;font-size:11px}.section-title h2{font-size:20px}}
 
+        .share-panel{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:28px;align-items:center;background:linear-gradient(125deg,#242629,#191a1c);border:1px solid #ffffff20;padding:clamp(20px,4vw,38px)}
+        .share-copy h3{font-size:24px;margin:10px 0}.share-copy>p:not(.eyebrow){color:#a5a6a8;font-size:13px;line-height:1.9;max-width:560px}
+        .share-url{padding:15px;background:#111214;border:1px solid #ed542b70;color:#ff9b7f;font:12px monospace;overflow-wrap:anywhere;margin:20px 0}
+        .share-qr{background:#fff;color:#171819;padding:18px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}
+        .share-qr img{width:100%;max-width:240px;aspect-ratio:1;object-fit:contain}.share-qr strong{font-size:13px}.share-qr a{color:#d94320;font-size:12px;text-decoration:underline}
+        @media(max-width:700px){.share-panel{grid-template-columns:1fr}.share-qr{max-width:320px;margin:auto;width:100%}}
         .admin-shell:after{content:"";position:fixed;z-index:-1;pointer-events:none;width:58vw;height:58vw;min-width:440px;min-height:440px;right:-18vw;top:8vh;border:1px solid #ed542b22;border-radius:50%;box-shadow:0 0 0 42px #ed542b08,0 0 0 86px #ffffff06,0 0 0 130px #ed542b05,inset 0 0 100px #ed542b0a;background:radial-gradient(circle at 35% 40%,#ed542b12,transparent 58%);animation:uwOrbitalFloat 24s ease-in-out infinite alternate}
         .admin-shell .dashboard,.admin-shell .topbar,.admin-shell>footer{position:relative;z-index:1}
         .admin-shell .workspace,.admin-shell .welcome,.admin-shell .login-card{backdrop-filter:blur(12px)}
